@@ -25,6 +25,7 @@ interface PersonDao {
     @Query("SELECT * FROM persons WHERE id = :id")
     suspend fun getPersonById(id: Int): Person?
 
-    @Query("SELECT * FROM persons WHERE category = :category ORDER BY lastContactTime DESC")
-    fun getPersonsByCategory(category: String): Flow<List<Person>>
+    @Query("SELECT * FROM persons WHERE category IN (:categories) ORDER BY lastContactTime DESC")
+    fun getPersonsByCategories(categories: Set<String>): Flow<List<Person>>
+
 }

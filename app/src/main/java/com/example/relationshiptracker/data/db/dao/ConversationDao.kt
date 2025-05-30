@@ -93,6 +93,7 @@ interface ConversationDao {
 
 data class ConversationStat(val category: ConversationCategory, val count: Int)
 
+// Non-entity data class
 data class ConversationWithPerson(
     val id: Long,
     val personId: Int,
@@ -100,5 +101,5 @@ data class ConversationWithPerson(
     val timestamp: Long,
     val category: ConversationCategory,
     val tag: String?,
-    val personName: String
+    val personName: String // Allow quick access the person's name without doing lookup
 )

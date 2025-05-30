@@ -17,6 +17,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
+import androidx.media3.common.util.Log
+import androidx.media3.common.util.UnstableApi
 import kotlinx.coroutines.flow.collectLatest
 import java.text.SimpleDateFormat
 import java.util.*
@@ -25,42 +27,111 @@ import com.example.relationshiptracker.data.db.entities.Conversation
 import com.example.relationshiptracker.ui.viewmodel.MainViewModel
 import com.example.relationshiptracker.data.db.entities.Person
 import com.example.relationshiptracker.data.db.entities.ConversationCategory
+import kotlinx.coroutines.flow.Flow
+
+@androidx.annotation.OptIn(UnstableApi::class)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(viewModel: MainViewModel) {
     var viewMode by remember { mutableStateOf("ContactList") }
     var selectedPerson by remember { mutableStateOf<Person?>(null) }
+    var persons by remember { mutableStateOf<List<Person>>(emptyList()) }
+    var allCategories by remember { mutableStateOf<List<String>>(emptyList()) }
+    var conversations by remember { mutableStateOf<List<Conversation>>(emptyList()) }
     var showAddPersonDialog by remember { mutableStateOf(false) }
     var showFilterDialog by remember { mutableStateOf(false) }
     var showSortDialog by remember { mutableStateOf(false) }
-    var persons by remember { mutableStateOf<List<Person>>(emptyList()) }
-    var conversations by remember { mutableStateOf<List<Conversation>>(emptyList()) }
     var conversationStats by remember { mutableStateOf<Map<ConversationCategory, Int>>(emptyMap()) }
     var selectedCategories by remember { mutableStateOf(setOf<String>()) }
     var sortOption by remember { mutableStateOf("Last Contact") }
     var sortAscending by remember { mutableStateOf(false) }
     var selectedTag by remember { mutableStateOf<String?>(null) }
 
+    // Log initial state
+    LaunchedEffect(Unit) {
+        Log.d("MainScreen", "Initial state: " +
+                "viewMode=$viewMode, " +
+                "selectedPerson=${selectedPerson?.id}, " +
+                "personsCount=${persons.size}, " +
+                "conversationsCount=${conversations.size}, " +
+                "selectedCategories=$selectedCategories, " +
+                "sortOption=$sortOption, " +
+                "sortAscending=$sortAscending, " +
+                "selectedTag=$selectedTag"
+        )
+        viewModel.allPersons.collectLatest { allPersons ->
+            allCategories = allPersons.map { it.category }.distinct().filter { it.isNotBlank() }
+        }
+    }
+
+    // Log when state changes
+    LaunchedEffect(viewMode) {
+        Log.d("MainScreen", "viewMode changed to: $viewMode")
+    }
+
+    LaunchedEffect(selectedPerson) {
+        Log.d("MainScreen", "selectedPerson changed to: ${selectedPerson?.id ?: "null"}")
+    }
+
+    LaunchedEffect(persons.size) {
+        Log.d("MainScreen", "persons list updated. Count: ${persons.size}")
+    }
+
+    LaunchedEffect(conversations.size) {
+        Log.d("MainScreen", "conversations list updated. Count: ${conversations.size}")
+    }
+
+    LaunchedEffect(selectedCategories) {
+        Log.d("MainScreen", "selectedCategories changed to: $selectedCategories")
+    }
+
+    // Collect people data
     LaunchedEffect(selectedCategories, sortOption, sortAscending) {
+
+        Log.d("MainScreen", "Collecting persons with filters: " +
+                "categories=$selectedCategories, " +
+                "sort=$sortOption, " +
+                "ascending=$sortAscending"
+        )
         if (selectedCategories.isEmpty()) {
-            viewModel.allPersons.collectLatest { persons = it.sortedBySortOption(sortOption, sortAscending) }
-        } else {
-            viewModel.getPersonsByCategory(selectedCategories.joinToString(",")).collectLatest {
+            viewModel.allPersons.collectLatest {
                 persons = it.sortedBySortOption(sortOption, sortAscending)
+                Log.d("MainScreen", "Updated all persons: ${it.size} items")
+            }
+        } else {
+            viewModel.getPersonsByCategories(selectedCategories).collectLatest {
+                persons = it.sortedBySortOption(sortOption, sortAscending)
+                Log.d("MainScreen", "Updated filtered persons: ${it.size} items")
             }
         }
     }
 
+    // Collect conversation data
     LaunchedEffect(viewMode, selectedTag) {
+        Log.d("MainScreen", "Collecting conversations: " +
+                "viewMode=$viewMode, " +
+                "selectedTag=$selectedTag"
+        )
+
         if (viewMode == "AllConversations") {
             if (selectedTag == null) {
-                viewModel.getAllConversations().collectLatest { conversations = it }
+                viewModel.getAllConversations().collectLatest {
+                    conversations = it
+                    Log.d("MainScreen", "Updated all conversations: ${it.size} items")
+                }
             } else {
-                viewModel.getAllConversationsByTag(selectedTag!!).collectLatest { conversations = it }
+                viewModel.getAllConversationsByTag(selectedTag!!).collectLatest {
+                    conversations = it
+                    Log.d("MainScreen", "Updated filtered conversations: ${it.size} items")
+                }
             }
-            viewModel.getAllConversationStats().collectLatest { conversationStats = it }
+            viewModel.getAllConversationStats().collectLatest {
+                conversationStats = it
+                Log.d("MainScreen", "Updated conversation stats: $it")
+            }
         }
     }
+
 
     when {
         selectedPerson != null -> {
@@ -75,11 +146,13 @@ fun MainScreen(viewModel: MainViewModel) {
             )
         }
         else -> {
+            // Main menu screen
             Scaffold(
                 topBar = {
                     TopAppBar(
                         title = { Text("Relationship Tracker") },
                         actions = {
+                            // Only show the sorting function in Contact list
                             if (viewMode == "ContactList") {
                                 IconButton(onClick = { showFilterDialog = true }) {
                                     Icon(
@@ -170,7 +243,7 @@ fun MainScreen(viewModel: MainViewModel) {
             }
             if (showFilterDialog) {
                 FilterDialog(
-                    allCategories = persons.map { it.category }.distinct().filter { it.isNotBlank() },
+                    allCategories = allCategories,
                     selectedCategories = selectedCategories,
                     onCategoryToggle = { category ->
                         selectedCategories = if (category in selectedCategories) {
@@ -179,7 +252,8 @@ fun MainScreen(viewModel: MainViewModel) {
                             selectedCategories + category
                         }
                     },
-                    onDismiss = { showFilterDialog = false }
+                    onDismiss = { showFilterDialog = false },
+                    onClear = {selectedCategories = setOf()}
                 )
             }
             if (showSortDialog) {
@@ -196,6 +270,7 @@ fun MainScreen(viewModel: MainViewModel) {
             }
         }
     }
+
 }
 
 @Composable
@@ -242,7 +317,8 @@ fun FilterDialog(
     allCategories: List<String>,
     selectedCategories: Set<String>,
     onCategoryToggle: (String) -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    onClear: () -> Unit,
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -274,7 +350,7 @@ fun FilterDialog(
             }
         },
         dismissButton = {
-            Button(onClick = { onCategoryToggle(""); onDismiss() }) {
+            Button(onClick = { onCategoryToggle(""); onClear() }) {
                 Text("Clear")
             }
         }

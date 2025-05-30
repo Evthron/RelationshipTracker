@@ -38,6 +38,12 @@ class MainViewModel(context: Context) : ViewModel() {
         }
     }
 
+    fun deletePerson(person: Person) {
+        viewModelScope.launch {
+            personDao.delete(person)
+        }
+    }
+
     suspend fun getPersonById(id: Int): Person? {
         return personDao.getPersonById(id)
     }
@@ -98,12 +104,11 @@ class MainViewModel(context: Context) : ViewModel() {
         return conversationDao.getAllConversationsWithPersonByTag(tag)
     }
 
-    fun getPersonsByCategory(categories: String): Flow<List<Person>> {
-        return if (categories.isBlank()) {
+    fun getPersonsByCategories(categories: Set<String>): Flow<List<Person>> {
+        return if (categories.isEmpty()) {
             personDao.getAllPersons()
         } else {
-            val categoryList = categories.split(",").map { it.trim() }
-            personDao.getPersonsByCategory(categoryList.joinToString("','", "'", "'"))
+            personDao.getPersonsByCategories(categories)
         }
     }
 
