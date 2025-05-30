@@ -78,6 +78,12 @@ class MainViewModel(context: Context) : ViewModel() {
         }
     }
 
+    fun deleteConversation(conversation: Conversation) {
+        viewModelScope.launch {
+            conversationDao.delete(conversation)
+        }
+    }
+
     fun getConversationsByPerson(personId: Int): Flow<List<Conversation>> {
         return conversationDao.getConversationsByPerson(personId)
     }

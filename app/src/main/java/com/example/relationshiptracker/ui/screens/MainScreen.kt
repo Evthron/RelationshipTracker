@@ -47,6 +47,7 @@ fun MainScreen(viewModel: MainViewModel) {
     var sortOption by remember { mutableStateOf("Last Contact") }
     var sortAscending by remember { mutableStateOf(false) }
     var selectedTag by remember { mutableStateOf<String?>(null) }
+    var pendingDeleteConversation by remember { mutableStateOf<Conversation?>(null) }
 
     // Log initial state
     LaunchedEffect(Unit) {
@@ -279,7 +280,19 @@ fun MainScreen(viewModel: MainViewModel) {
                     onUpdate = { updatedConversation ->
                         viewModel.updateConversation(updatedConversation)
                         showEditConversationDialog = null
-                    }
+                    },
+                    onDelete = { pendingDeleteConversation = showEditConversationDialog }
+                )
+            }
+            if (pendingDeleteConversation != null) {
+                ConfirmDeleteDialog(
+                    message = "Are you sure you want to delete this conversation?",
+                    onConfirm = {
+                        viewModel.deleteConversation(pendingDeleteConversation!!)
+                        pendingDeleteConversation = null
+                        showEditConversationDialog = null
+                    },
+                    onCancel = { pendingDeleteConversation = null }
                 )
             }
         }
@@ -506,6 +519,29 @@ fun AddPersonDialog(
     )
 }
 
+@Composable
+fun ConfirmDeleteDialog(
+    message: String,
+    onConfirm: () -> Unit,
+    onCancel: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onCancel,
+        title = { Text("Confirm Deletion") },
+        text = { Text(message) },
+        confirmButton = {
+            Button(onClick = onConfirm) {
+                Text("Confirm")
+            }
+        },
+        dismissButton = {
+            Button(onClick = onCancel) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PersonDetailScreen(
@@ -531,6 +567,8 @@ fun PersonDetailScreen(
     var interests by remember { mutableStateOf(TextFieldValue(person.interests)) }
     var goals by remember { mutableStateOf(TextFieldValue(person.goals)) }
     var category by remember { mutableStateOf(TextFieldValue(person.category)) }
+    var pendingDeletePerson by remember { mutableStateOf<Person?>(null) }
+    var pendingDeleteConversation by remember { mutableStateOf<Conversation?>(null) }
 
     LaunchedEffect(person, selectedTag, viewMode) {
         if (viewMode == "Conversation") {
@@ -557,7 +595,7 @@ fun PersonDetailScreen(
                     Button(onClick = { showAddConversationDialog = true }) {
                         Text("Add Conversation")
                     }
-                    Button(onClick = onPersonDelete) {
+                    Button(onClick = { pendingDeletePerson = person }) {
                         Text("Delete")
                     }
                 }
@@ -673,7 +711,32 @@ fun PersonDetailScreen(
             onUpdate = { updatedConversation ->
                 viewModel.updateConversation(updatedConversation)
                 showEditConversationDialog = null
-            }
+            },
+            onDelete = { pendingDeleteConversation = showEditConversationDialog }
+        )
+    }
+
+    if (pendingDeletePerson != null) {
+        ConfirmDeleteDialog(
+            message = "Are you sure you want to delete ${pendingDeletePerson!!.name}?",
+            onConfirm = {
+                viewModel.deletePerson(pendingDeletePerson!!)
+                pendingDeletePerson = null
+                onBack()
+            },
+            onCancel = { pendingDeletePerson = null }
+        )
+    }
+
+    if (pendingDeleteConversation != null) {
+        ConfirmDeleteDialog(
+            message = "Are you sure you want to delete this conversation?",
+            onConfirm = {
+                viewModel.deleteConversation(pendingDeleteConversation!!)
+                pendingDeleteConversation = null
+                showEditConversationDialog = null
+            },
+            onCancel = { pendingDeleteConversation = null }
         )
     }
 }
@@ -944,7 +1007,8 @@ fun AddConversationDialog(
 fun EditConversationDialog(
     conversation: Conversation,
     onDismiss: () -> Unit,
-    onUpdate: (Conversation) -> Unit
+    onUpdate: (Conversation) -> Unit,
+    onDelete: () -> Unit
 ) {
     var content by remember { mutableStateOf(TextFieldValue(conversation.content)) }
     var selectedTag by remember { mutableStateOf(conversation.tag ?: "Casual") }
@@ -1001,8 +1065,14 @@ fun EditConversationDialog(
             }
         },
         dismissButton = {
-            Button(onClick = onDismiss) {
-                Text("Cancel")
+            Row {
+                Button(onClick = onDelete) {
+                    Text("Delete")
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                Button(onClick = onDismiss) {
+                    Text("Cancel")
+                }
             }
         }
     )

@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Update
+import androidx.room.Delete
 import com.example.relationshiptracker.data.db.entities.Conversation
 import com.example.relationshiptracker.data.db.entities.ConversationCategory
 import kotlinx.coroutines.flow.Flow
@@ -16,6 +17,9 @@ interface ConversationDao {
 
     @Update
     suspend fun update(conversation: Conversation)
+
+    @Delete
+    suspend fun delete(conversation: Conversation)
 
     @Query("SELECT * FROM conversations WHERE personId = :personId ORDER BY timestamp DESC")
     fun getConversationsByPerson(personId: Int): Flow<List<Conversation>>
