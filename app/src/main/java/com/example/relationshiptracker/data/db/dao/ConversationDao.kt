@@ -3,6 +3,7 @@ package com.example.relationshiptracker.data.db.dao
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
+import androidx.room.Update
 import com.example.relationshiptracker.data.db.entities.Conversation
 import com.example.relationshiptracker.data.db.entities.ConversationCategory
 import kotlinx.coroutines.flow.Flow
@@ -12,6 +13,9 @@ import kotlinx.coroutines.flow.map
 interface ConversationDao {
     @Insert
     suspend fun insert(conversation: Conversation): Long
+
+    @Update
+    suspend fun update(conversation: Conversation)
 
     @Query("SELECT * FROM conversations WHERE personId = :personId ORDER BY timestamp DESC")
     fun getConversationsByPerson(personId: Int): Flow<List<Conversation>>

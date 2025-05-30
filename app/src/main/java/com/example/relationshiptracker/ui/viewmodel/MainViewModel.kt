@@ -72,6 +72,12 @@ class MainViewModel(context: Context) : ViewModel() {
         }
     }
 
+    fun updateConversation(conversation: Conversation) {
+        viewModelScope.launch {
+            conversationDao.update(conversation)
+        }
+    }
+
     fun getConversationsByPerson(personId: Int): Flow<List<Conversation>> {
         return conversationDao.getConversationsByPerson(personId)
     }

@@ -41,6 +41,7 @@ fun MainScreen(viewModel: MainViewModel) {
     var showAddPersonDialog by remember { mutableStateOf(false) }
     var showFilterDialog by remember { mutableStateOf(false) }
     var showSortDialog by remember { mutableStateOf(false) }
+    var showEditConversationDialog by remember { mutableStateOf<Conversation?>(null) }
     var conversationStats by remember { mutableStateOf<Map<ConversationCategory, Int>>(emptyMap()) }
     var selectedCategories by remember { mutableStateOf(setOf<String>()) }
     var sortOption by remember { mutableStateOf("Last Contact") }
@@ -87,7 +88,6 @@ fun MainScreen(viewModel: MainViewModel) {
 
     // Collect people data
     LaunchedEffect(selectedCategories, sortOption, sortAscending) {
-
         Log.d("MainScreen", "Collecting persons with filters: " +
                 "categories=$selectedCategories, " +
                 "sort=$sortOption, " +
@@ -132,7 +132,6 @@ fun MainScreen(viewModel: MainViewModel) {
         }
     }
 
-
     when {
         selectedPerson != null -> {
             PersonDetailScreen(
@@ -142,6 +141,10 @@ fun MainScreen(viewModel: MainViewModel) {
                 onPersonUpdate = { updatedPerson ->
                     viewModel.updatePerson(updatedPerson)
                     selectedPerson = updatedPerson
+                },
+                onPersonDelete = {
+                    viewModel.deletePerson(selectedPerson!!)
+                    selectedPerson = null
                 }
             )
         }
@@ -225,7 +228,8 @@ fun MainScreen(viewModel: MainViewModel) {
                             conversations = conversations,
                             conversationStats = conversationStats,
                             selectedTag = selectedTag,
-                            onTagSelect = { tag -> selectedTag = if (tag == "All") null else tag }
+                            onTagSelect = { tag -> selectedTag = if (tag == "All") null else tag },
+                            onConversationEdit = { conversation -> showEditConversationDialog = conversation }
                         )
                     }
                 }
@@ -253,7 +257,7 @@ fun MainScreen(viewModel: MainViewModel) {
                         }
                     },
                     onDismiss = { showFilterDialog = false },
-                    onClear = {selectedCategories = setOf()}
+                    onClear = { selectedCategories = setOf() }
                 )
             }
             if (showSortDialog) {
@@ -268,9 +272,18 @@ fun MainScreen(viewModel: MainViewModel) {
                     onDismiss = { showSortDialog = false }
                 )
             }
+            if (showEditConversationDialog != null) {
+                EditConversationDialog(
+                    conversation = showEditConversationDialog!!,
+                    onDismiss = { showEditConversationDialog = null },
+                    onUpdate = { updatedConversation ->
+                        viewModel.updateConversation(updatedConversation)
+                        showEditConversationDialog = null
+                    }
+                )
+            }
         }
     }
-
 }
 
 @Composable
@@ -497,17 +510,21 @@ fun PersonDetailScreen(
     person: Person,
     viewModel: MainViewModel,
     onBack: () -> Unit,
-    onPersonUpdate: (Person) -> Unit
+    onPersonUpdate: (Person) -> Unit,
+    onPersonDelete: () -> Unit
 ) {
     var conversations by remember { mutableStateOf<List<Conversation>>(emptyList()) }
     var selectedTag by remember { mutableStateOf<String?>(null) }
     var showAddConversationDialog by remember { mutableStateOf(false) }
+    var showEditConversationDialog by remember { mutableStateOf<Conversation?>(null) }
     var viewMode by remember { mutableStateOf("Contact") }
     var conversationStats by remember { mutableStateOf<Map<ConversationCategory, Int>>(emptyMap()) }
+    var isEditingName by remember { mutableStateOf(false) }
     var isEditingImpression by remember { mutableStateOf(false) }
     var isEditingInterests by remember { mutableStateOf(false) }
     var isEditingGoals by remember { mutableStateOf(false) }
     var isEditingCategory by remember { mutableStateOf(false) }
+    var name by remember { mutableStateOf(TextFieldValue(person.name)) }
     var impression by remember { mutableStateOf(TextFieldValue(person.impression)) }
     var interests by remember { mutableStateOf(TextFieldValue(person.interests)) }
     var goals by remember { mutableStateOf(TextFieldValue(person.goals)) }
@@ -537,6 +554,9 @@ fun PersonDetailScreen(
                 actions = {
                     Button(onClick = { showAddConversationDialog = true }) {
                         Text("Add Conversation")
+                    }
+                    Button(onClick = onPersonDelete) {
+                        Text("Delete")
                     }
                 }
             )
@@ -583,16 +603,19 @@ fun PersonDetailScreen(
                 ContactView(
                     person = person,
                     conversationStats = conversationStats,
+                    isEditingName = isEditingName,
                     isEditingImpression = isEditingImpression,
                     isEditingInterests = isEditingInterests,
                     isEditingGoals = isEditingGoals,
                     isEditingCategory = isEditingCategory,
+                    name = name,
                     impression = impression,
                     interests = interests,
                     goals = goals,
                     category = category,
                     onEditToggle = { field ->
                         when (field) {
+                            "name" -> isEditingName = !isEditingName
                             "impression" -> isEditingImpression = !isEditingImpression
                             "interests" -> isEditingInterests = !isEditingInterests
                             "goals" -> isEditingGoals = !isEditingGoals
@@ -601,6 +624,7 @@ fun PersonDetailScreen(
                     },
                     onValueChange = { field, value ->
                         when (field) {
+                            "name" -> name = value
                             "impression" -> impression = value
                             "interests" -> interests = value
                             "goals" -> goals = value
@@ -608,6 +632,7 @@ fun PersonDetailScreen(
                         }
                         onPersonUpdate(
                             person.copy(
+                                name = name.text,
                                 impression = impression.text,
                                 interests = interests.text,
                                 goals = goals.text,
@@ -622,7 +647,8 @@ fun PersonDetailScreen(
                     conversations = conversations,
                     conversationStats = conversationStats,
                     selectedTag = selectedTag,
-                    onTagSelect = { tag -> selectedTag = if (tag == "All") null else tag }
+                    onTagSelect = { tag -> selectedTag = if (tag == "All") null else tag },
+                    onConversationEdit = { conversation -> showEditConversationDialog = conversation }
                 )
             }
         }
@@ -637,16 +663,29 @@ fun PersonDetailScreen(
             }
         )
     }
+
+    if (showEditConversationDialog != null) {
+        EditConversationDialog(
+            conversation = showEditConversationDialog!!,
+            onDismiss = { showEditConversationDialog = null },
+            onUpdate = { updatedConversation ->
+                viewModel.updateConversation(updatedConversation)
+                showEditConversationDialog = null
+            }
+        )
+    }
 }
 
 @Composable
 fun ContactView(
     person: Person,
     conversationStats: Map<ConversationCategory, Int>,
+    isEditingName: Boolean,
     isEditingImpression: Boolean,
     isEditingInterests: Boolean,
     isEditingGoals: Boolean,
     isEditingCategory: Boolean,
+    name: TextFieldValue,
     impression: TextFieldValue,
     interests: TextFieldValue,
     goals: TextFieldValue,
@@ -655,6 +694,25 @@ fun ContactView(
     onValueChange: (String, TextFieldValue) -> Unit
 ) {
     Column {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp)
+                .clickable { onEditToggle("name") }
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text("Name", style = MaterialTheme.typography.titleMedium)
+                if (isEditingName) {
+                    OutlinedTextField(
+                        value = name,
+                        onValueChange = { onValueChange("name", it) },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                } else {
+                    Text(name.text.ifBlank { "Click to edit" }, style = MaterialTheme.typography.bodyLarge)
+                }
+            }
+        }
         Card(
             modifier = Modifier
                 .fillMaxWidth()
@@ -758,7 +816,8 @@ fun ConversationView(
     conversations: List<Conversation>,
     conversationStats: Map<ConversationCategory, Int>,
     selectedTag: String?,
-    onTagSelect: (String) -> Unit
+    onTagSelect: (String) -> Unit,
+    onConversationEdit: (Conversation) -> Unit
 ) {
     var localSelectedTag by remember { mutableStateOf(selectedTag) }
 
@@ -803,6 +862,7 @@ fun ConversationView(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(vertical = 4.dp)
+                        .clickable { onConversationEdit(conversation) }
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text(
@@ -868,6 +928,74 @@ fun AddConversationDialog(
                 }
             ) {
                 Text("Add")
+            }
+        },
+        dismissButton = {
+            Button(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
+@Composable
+fun EditConversationDialog(
+    conversation: Conversation,
+    onDismiss: () -> Unit,
+    onUpdate: (Conversation) -> Unit
+) {
+    var content by remember { mutableStateOf(TextFieldValue(conversation.content)) }
+    var selectedTag by remember { mutableStateOf(conversation.tag ?: "Casual") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Edit Conversation") },
+        text = {
+            Column {
+                OutlinedTextField(
+                    value = content,
+                    onValueChange = { content = it },
+                    label = { Text("Conversation Content") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text("Select Tag:")
+                listOf("Emotional", "Practical", "Validation", "Share", "Information", "Casual").forEach { tag ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = selectedTag == tag,
+                            onClick = { selectedTag = tag }
+                        )
+                        Text(tag)
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    if (content.text.isNotBlank()) {
+                        onUpdate(
+                            conversation.copy(
+                                content = content.text,
+                                tag = selectedTag,
+                                category = when (selectedTag) {
+                                    "Emotional" -> ConversationCategory.EMOTIONAL
+                                    "Practical" -> ConversationCategory.PRACTICAL
+                                    "Validation" -> ConversationCategory.VALIDATION
+                                    "Share" -> ConversationCategory.SHARE
+                                    "Information" -> ConversationCategory.INFORMATION
+                                    else -> ConversationCategory.CASUAL
+                                }
+                            )
+                        )
+                    }
+                }
+            ) {
+                Text("Update")
             }
         },
         dismissButton = {
