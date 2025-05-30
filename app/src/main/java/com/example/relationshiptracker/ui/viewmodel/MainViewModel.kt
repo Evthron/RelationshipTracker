@@ -47,9 +47,16 @@ class MainViewModel(context: Context) : ViewModel() {
             val conversation = Conversation(
                 personId = personId,
                 content = content,
-                tag = tag,
+                tag = tag ?: "Casual",
                 timestamp = System.currentTimeMillis(),
-                category = ConversationCategory.CASUAL // Adjust based on your logic
+                category = when (tag) {
+                    "Emotional" -> ConversationCategory.EMOTIONAL
+                    "Practical" -> ConversationCategory.PRACTICAL
+                    "Validation" -> ConversationCategory.VALIDATION
+                    "Share" -> ConversationCategory.SHARE
+                    "Information" -> ConversationCategory.INFORMATION
+                    else -> ConversationCategory.CASUAL
+                }
             )
             conversationDao.insert(conversation)
             val person = personDao.getPersonById(personId)
@@ -65,6 +72,19 @@ class MainViewModel(context: Context) : ViewModel() {
 
     fun getConversationsByTag(personId: Int, tag: String): Flow<List<Conversation>> {
         return conversationDao.getConversationsByPersonAndTag(personId, tag)
+    }
+
+    fun getPersonsByCategory(categories: String): Flow<List<Person>> {
+        return if (categories.isBlank()) {
+            personDao.getAllPersons()
+        } else {
+            val categoryList = categories.split(",").map { it.trim() }
+            personDao.getPersonsByCategory(categoryList.joinToString("','", "'", "'"))
+        }
+    }
+
+    fun getConversationStats(personId: Long): Flow<Map<ConversationCategory, Int>> {
+        return conversationDao.getConversationStats(personId)
     }
 }
 

@@ -11,5 +11,5 @@ data class Person(
     val interests: String,
     val goals: String,
     val category: String,
-    val lastContactTime: Long = 0 // Timestamp of last conversation
+    val lastContactTime: Long = 0, // Timestamp of last conversation
 )
