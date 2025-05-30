@@ -313,12 +313,14 @@ fun PersonListScreen(
                         text = "Category: ${person.category.ifBlank { "None" }}",
                         style = MaterialTheme.typography.bodyMedium
                     )
-                    Text(
-                        text = "Last Contact: ${
-                            SimpleDateFormat("yyyy-MM-dd").format(Date(person.lastContactTime))
-                        }",
-                        style = MaterialTheme.typography.bodySmall
-                    )
+                    if (person.lastContactTime != 0L) {  // Only show if time is not 0
+                        Text(
+                            text = "Last Contact: ${
+                                SimpleDateFormat("yyyy-MM-dd").format(Date(person.lastContactTime))
+                            }",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
                 }
             }
         }
