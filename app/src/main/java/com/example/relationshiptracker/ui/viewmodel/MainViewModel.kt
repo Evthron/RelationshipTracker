@@ -6,11 +6,11 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
-
 import com.example.relationshiptracker.data.db.AppDatabase
 import com.example.relationshiptracker.data.db.entities.Conversation
 import com.example.relationshiptracker.data.db.entities.ConversationCategory
 import com.example.relationshiptracker.data.db.entities.Person
+import com.example.relationshiptracker.data.db.dao.ConversationWithPerson
 
 class MainViewModel(context: Context) : ViewModel() {
     private val personDao = AppDatabase.getDatabase(context).personDao()
@@ -74,6 +74,30 @@ class MainViewModel(context: Context) : ViewModel() {
         return conversationDao.getConversationsByPersonAndTag(personId, tag)
     }
 
+    fun getConversationsWithPersonByPerson(personId: Int): Flow<List<ConversationWithPerson>> {
+        return conversationDao.getConversationsWithPersonByPerson(personId)
+    }
+
+    fun getConversationsWithPersonByTag(personId: Int, tag: String): Flow<List<ConversationWithPerson>> {
+        return conversationDao.getConversationsWithPersonByPersonAndTag(personId, tag)
+    }
+
+    fun getAllConversations(): Flow<List<Conversation>> {
+        return conversationDao.getAllConversations()
+    }
+
+    fun getAllConversationsByTag(tag: String): Flow<List<Conversation>> {
+        return conversationDao.getAllConversationsByTag(tag)
+    }
+
+    fun getAllConversationsWithPerson(): Flow<List<ConversationWithPerson>> {
+        return conversationDao.getAllConversationsWithPerson()
+    }
+
+    fun getAllConversationsWithPersonByTag(tag: String): Flow<List<ConversationWithPerson>> {
+        return conversationDao.getAllConversationsWithPersonByTag(tag)
+    }
+
     fun getPersonsByCategory(categories: String): Flow<List<Person>> {
         return if (categories.isBlank()) {
             personDao.getAllPersons()
@@ -85,6 +109,10 @@ class MainViewModel(context: Context) : ViewModel() {
 
     fun getConversationStats(personId: Long): Flow<Map<ConversationCategory, Int>> {
         return conversationDao.getConversationStats(personId)
+    }
+
+    fun getAllConversationStats(): Flow<Map<ConversationCategory, Int>> {
+        return conversationDao.getAllConversationStats()
     }
 }
 

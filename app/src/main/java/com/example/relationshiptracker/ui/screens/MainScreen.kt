@@ -7,12 +7,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.horizontalScroll
-
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.FilterList  // or FilterAlt
-import androidx.compose.material.icons.filled.Sort
-
+import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -27,17 +25,21 @@ import com.example.relationshiptracker.data.db.entities.Conversation
 import com.example.relationshiptracker.ui.viewmodel.MainViewModel
 import com.example.relationshiptracker.data.db.entities.Person
 import com.example.relationshiptracker.data.db.entities.ConversationCategory
-
-
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(viewModel: MainViewModel) {
-    var viewMode by remember { mutableStateOf("PersonList") }
-    var showAddPersonDialog by remember { mutableStateOf(false) }
+    var viewMode by remember { mutableStateOf("ContactList") }
     var selectedPerson by remember { mutableStateOf<Person?>(null) }
+    var showAddPersonDialog by remember { mutableStateOf(false) }
+    var showFilterDialog by remember { mutableStateOf(false) }
+    var showSortDialog by remember { mutableStateOf(false) }
     var persons by remember { mutableStateOf<List<Person>>(emptyList()) }
+    var conversations by remember { mutableStateOf<List<Conversation>>(emptyList()) }
+    var conversationStats by remember { mutableStateOf<Map<ConversationCategory, Int>>(emptyMap()) }
     var selectedCategories by remember { mutableStateOf(setOf<String>()) }
     var sortOption by remember { mutableStateOf("Last Contact") }
     var sortAscending by remember { mutableStateOf(false) }
+    var selectedTag by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(selectedCategories, sortOption, sortAscending) {
         if (selectedCategories.isEmpty()) {
@@ -49,147 +51,189 @@ fun MainScreen(viewModel: MainViewModel) {
         }
     }
 
-    if (selectedPerson == null) {
-        PersonListScreen(
-            persons = persons,
-            onAddPerson = { showAddPersonDialog = true },
-            onPersonClick = { person -> selectedPerson = person },
-            selectedCategories = selectedCategories,
-            onCategoryToggle = { category ->
-                selectedCategories = if (category in selectedCategories) {
-                    selectedCategories - category
-                } else {
-                    selectedCategories + category
-                }
-            },
-            allCategories = persons.map { it.category }.distinct().filter { it.isNotBlank() },
-            sortOption = sortOption,
-            sortAscending = sortAscending,
-            onSortChange = { option, ascending ->
-                sortOption = option
-                sortAscending = ascending
+    LaunchedEffect(viewMode, selectedTag) {
+        if (viewMode == "AllConversations") {
+            if (selectedTag == null) {
+                viewModel.getAllConversations().collectLatest { conversations = it }
+            } else {
+                viewModel.getAllConversationsByTag(selectedTag!!).collectLatest { conversations = it }
             }
-        )
-    } else {
-        PersonDetailScreen(
-            person = selectedPerson!!,
-            viewModel = viewModel,
-            onBack = { selectedPerson = null },
-            onPersonUpdate = { updatedPerson ->
-                viewModel.updatePerson(updatedPerson)
-                selectedPerson = updatedPerson
-            }
-        )
+            viewModel.getAllConversationStats().collectLatest { conversationStats = it }
+        }
     }
 
-    if (showAddPersonDialog) {
-        AddPersonDialog(
-            onDismiss = { showAddPersonDialog = false },
-            onAdd = { name, category ->
-                viewModel.addPerson(name, "", "", "", category)
-                showAddPersonDialog = false
-            },
-            existingCategories = persons.map { it.category }.distinct().filter { it.isNotBlank() }
-        )
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun PersonListScreen(
-    persons: List<Person>,
-    onAddPerson: () -> Unit,
-    onPersonClick: (Person) -> Unit,
-    selectedCategories: Set<String>,
-    onCategoryToggle: (String) -> Unit,
-    allCategories: List<String>,
-    sortOption: String,
-    sortAscending: Boolean,
-    onSortChange: (String, Boolean) -> Unit
-) {
-    var showFilterDialog by remember { mutableStateOf(false) }
-    var showSortDialog by remember { mutableStateOf(false) }
-
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Relationship Tracker") },
-                actions = {
-                    IconButton(onClick = { showFilterDialog = true }) {
-                        Icon(
-                            imageVector = Icons.Filled.FilterList,
-                            contentDescription = "Filter by category"
-                        )
-                    }
-                    IconButton(onClick = { showSortDialog = true }) {
-                        Icon(
-                            imageVector = Icons.Filled.Sort,
-                            contentDescription = "Sort options"
-                        )
-                    }
-                    IconButton(onClick = onAddPerson) {
-                        Icon(
-                            imageVector = Icons.Filled.Add,
-                            contentDescription = "Add new person"
-                        )
-                    }
+    when {
+        selectedPerson != null -> {
+            PersonDetailScreen(
+                person = selectedPerson!!,
+                viewModel = viewModel,
+                onBack = { selectedPerson = null },
+                onPersonUpdate = { updatedPerson ->
+                    viewModel.updatePerson(updatedPerson)
+                    selectedPerson = updatedPerson
                 }
             )
         }
-    ) { padding ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(16.dp)
-        ) {
-            items(persons) { person ->
-                Card(
+        else -> {
+            Scaffold(
+                topBar = {
+                    TopAppBar(
+                        title = { Text("Relationship Tracker") },
+                        actions = {
+                            if (viewMode == "ContactList") {
+                                IconButton(onClick = { showFilterDialog = true }) {
+                                    Icon(
+                                        imageVector = Icons.Filled.FilterList,
+                                        contentDescription = "Filter by category"
+                                    )
+                                }
+                                IconButton(onClick = { showSortDialog = true }) {
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Filled.Sort,
+                                        contentDescription = "Sort options"
+                                    )
+                                }
+                                IconButton(onClick = { showAddPersonDialog = true }) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Add,
+                                        contentDescription = "Add new person"
+                                    )
+                                }
+                            }
+                        }
+                    )
+                },
+                bottomBar = {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        Button(
+                            onClick = { viewMode = "ContactList" },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (viewMode == "ContactList")
+                                    MaterialTheme.colorScheme.primary
+                                else
+                                    MaterialTheme.colorScheme.secondary
+                            )
+                        ) {
+                            Text("All Contacts")
+                        }
+                        Button(
+                            onClick = { viewMode = "AllConversations" },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (viewMode == "AllConversations")
+                                    MaterialTheme.colorScheme.primary
+                                else
+                                    MaterialTheme.colorScheme.secondary
+                            )
+                        ) {
+                            Text("All Conversations")
+                        }
+                    }
+                }
+            ) { padding ->
+                Column(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 4.dp)
-                        .clickable { onPersonClick(person) }
+                        .fillMaxSize()
+                        .padding(padding)
                 ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text(
-                            text = person.name,
-                            style = MaterialTheme.typography.titleLarge
+                    when (viewMode) {
+                        "ContactList" -> PersonListScreen(
+                            persons = persons,
+                            onPersonClick = { person -> selectedPerson = person },
+                            allCategories = persons.map { it.category }.distinct()
+                                .filter { it.isNotBlank() }
                         )
-                        Text(
-                            text = "Category: ${person.category.ifBlank { "None" }}",
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                        Text(
-                            text = "Last Contact: ${
-                                SimpleDateFormat("yyyy-MM-dd").format(Date(person.lastContactTime))
-                            }",
-                            style = MaterialTheme.typography.bodySmall
+                        "AllConversations" -> ConversationView(
+                            viewModel = viewModel,
+                            conversations = conversations,
+                            conversationStats = conversationStats,
+                            selectedTag = selectedTag,
+                            onTagSelect = { tag -> selectedTag = if (tag == "All") null else tag }
                         )
                     }
                 }
             }
+
+            if (showAddPersonDialog) {
+                AddPersonDialog(
+                    onDismiss = { showAddPersonDialog = false },
+                    onAdd = { name, category ->
+                        viewModel.addPerson(name, "", "", "", category)
+                        showAddPersonDialog = false
+                    },
+                    existingCategories = persons.map { it.category }.distinct().filter { it.isNotBlank() }
+                )
+            }
+            if (showFilterDialog) {
+                FilterDialog(
+                    allCategories = persons.map { it.category }.distinct().filter { it.isNotBlank() },
+                    selectedCategories = selectedCategories,
+                    onCategoryToggle = { category ->
+                        selectedCategories = if (category in selectedCategories) {
+                            selectedCategories - category
+                        } else {
+                            selectedCategories + category
+                        }
+                    },
+                    onDismiss = { showFilterDialog = false }
+                )
+            }
+            if (showSortDialog) {
+                SortDialog(
+                    currentOption = sortOption,
+                    currentAscending = sortAscending,
+                    onSortSelect = { option, ascending ->
+                        sortOption = option
+                        sortAscending = ascending
+                        showSortDialog = false
+                    },
+                    onDismiss = { showSortDialog = false }
+                )
+            }
         }
     }
+}
 
-    if (showFilterDialog) {
-        FilterDialog(
-            allCategories = allCategories,
-            selectedCategories = selectedCategories,
-            onCategoryToggle = onCategoryToggle,
-            onDismiss = { showFilterDialog = false }
-        )
-    }
-
-    if (showSortDialog) {
-        SortDialog(
-            currentOption = sortOption,
-            currentAscending = sortAscending,
-            onSortSelect = { option, ascending ->
-                onSortChange(option, ascending)
-                showSortDialog = false
-            },
-            onDismiss = { showSortDialog = false }
-        )
+@Composable
+fun PersonListScreen(
+    persons: List<Person>,
+    onPersonClick: (Person) -> Unit,
+    allCategories: List<String>
+) {
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+    ) {
+        items(persons) { person ->
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp)
+                    .clickable { onPersonClick(person) }
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = person.name,
+                        style = MaterialTheme.typography.titleLarge
+                    )
+                    Text(
+                        text = "Category: ${person.category.ifBlank { "None" }}",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Text(
+                        text = "Last Contact: ${
+                            SimpleDateFormat("yyyy-MM-dd").format(Date(person.lastContactTime))
+                        }",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -498,7 +542,9 @@ fun PersonDetailScreen(
                 )
             } else {
                 ConversationView(
+                    viewModel = viewModel,
                     conversations = conversations,
+                    conversationStats = conversationStats,
                     selectedTag = selectedTag,
                     onTagSelect = { tag -> selectedTag = if (tag == "All") null else tag }
                 )
@@ -632,10 +678,14 @@ fun ContactView(
 
 @Composable
 fun ConversationView(
+    viewModel: MainViewModel,
     conversations: List<Conversation>,
+    conversationStats: Map<ConversationCategory, Int>,
     selectedTag: String?,
     onTagSelect: (String) -> Unit
 ) {
+    var localSelectedTag by remember { mutableStateOf(selectedTag) }
+
     Column {
         Row(
             modifier = Modifier
@@ -644,16 +694,29 @@ fun ConversationView(
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             listOf("All", "Emotional", "Practical", "Validation", "Share", "Information", "Casual").forEach { tag ->
+                val count = when (tag) {
+                    "All" -> conversationStats.values.sum()
+                    "Emotional" -> conversationStats[ConversationCategory.EMOTIONAL] ?: 0
+                    "Practical" -> conversationStats[ConversationCategory.PRACTICAL] ?: 0
+                    "Validation" -> conversationStats[ConversationCategory.VALIDATION] ?: 0
+                    "Share" -> conversationStats[ConversationCategory.SHARE] ?: 0
+                    "Information" -> conversationStats[ConversationCategory.INFORMATION] ?: 0
+                    "Casual" -> conversationStats[ConversationCategory.CASUAL] ?: 0
+                    else -> 0
+                }
                 Button(
-                    onClick = { onTagSelect(tag) },
+                    onClick = {
+                        localSelectedTag = if (tag == "All") null else tag
+                        onTagSelect(tag)
+                    },
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = if (selectedTag == tag || (tag == "All" && selectedTag == null))
+                        containerColor = if (localSelectedTag == tag || (tag == "All" && localSelectedTag == null))
                             MaterialTheme.colorScheme.primary
                         else
                             MaterialTheme.colorScheme.secondary
                     )
                 ) {
-                    Text(tag)
+                    Text("$tag ($count)")
                 }
             }
         }
@@ -739,11 +802,10 @@ fun AddConversationDialog(
     )
 }
 
-// Extension function to handle sorting
 fun List<Person>.sortedBySortOption(sortOption: String, ascending: Boolean): List<Person> {
     return when (sortOption) {
         "Name" -> if (ascending) sortedBy { it.name } else sortedByDescending { it.name }
-        "Conversation Count" -> if (ascending) sortedBy { it.id } else sortedByDescending { it.id } // Placeholder, needs conversation count
+        "Conversation Count" -> if (ascending) sortedBy { it.id } else sortedByDescending { it.id }
         else -> if (ascending) sortedBy { it.lastContactTime } else sortedByDescending { it.lastContactTime }
     }
 }

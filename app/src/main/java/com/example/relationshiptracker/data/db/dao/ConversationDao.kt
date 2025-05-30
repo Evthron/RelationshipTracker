@@ -20,6 +20,47 @@ interface ConversationDao {
     fun getConversationsByPersonAndTag(personId: Int, tag: String): Flow<List<Conversation>>
 
     @Query("""
+        SELECT c.*, p.name as personName 
+        FROM conversations c 
+        INNER JOIN persons p ON c.personId = p.id 
+        WHERE c.personId = :personId 
+        ORDER BY c.timestamp DESC
+    """)
+    fun getConversationsWithPersonByPerson(personId: Int): Flow<List<ConversationWithPerson>>
+
+    @Query("""
+        SELECT c.*, p.name as personName 
+        FROM conversations c 
+        INNER JOIN persons p ON c.personId = p.id 
+        WHERE c.personId = :personId AND c.tag = :tag 
+        ORDER BY c.timestamp DESC
+    """)
+    fun getConversationsWithPersonByPersonAndTag(personId: Int, tag: String): Flow<List<ConversationWithPerson>>
+
+    @Query("SELECT * FROM conversations ORDER BY timestamp DESC")
+    fun getAllConversations(): Flow<List<Conversation>>
+
+    @Query("SELECT * FROM conversations WHERE tag = :tag ORDER BY timestamp DESC")
+    fun getAllConversationsByTag(tag: String): Flow<List<Conversation>>
+
+    @Query("""
+        SELECT c.*, p.name as personName 
+        FROM conversations c 
+        INNER JOIN persons p ON c.personId = p.id 
+        ORDER BY c.timestamp DESC
+    """)
+    fun getAllConversationsWithPerson(): Flow<List<ConversationWithPerson>>
+
+    @Query("""
+        SELECT c.*, p.name as personName 
+        FROM conversations c 
+        INNER JOIN persons p ON c.personId = p.id 
+        WHERE c.tag = :tag 
+        ORDER BY c.timestamp DESC
+    """)
+    fun getAllConversationsWithPersonByTag(tag: String): Flow<List<ConversationWithPerson>>
+
+    @Query("""
         SELECT category, COUNT(*) as count 
         FROM conversations 
         WHERE personId = :personId 
@@ -33,8 +74,31 @@ interface ConversationDao {
         }
     }
 
+    @Query("""
+        SELECT category, COUNT(*) as count 
+        FROM conversations 
+        GROUP BY category
+    """)
+    fun getAllConversationStatsRaw(): Flow<List<ConversationStat>>
+
+    fun getAllConversationStats(): Flow<Map<ConversationCategory, Int>> {
+        return getAllConversationStatsRaw().map { stats ->
+            stats.associate { it.category to it.count }
+        }
+    }
+
     @Query("SELECT MAX(timestamp) FROM conversations WHERE personId = :personId")
     suspend fun getLastConversationTime(personId: Int): Long?
 }
 
 data class ConversationStat(val category: ConversationCategory, val count: Int)
+
+data class ConversationWithPerson(
+    val id: Long,
+    val personId: Int,
+    val content: String,
+    val timestamp: Long,
+    val category: ConversationCategory,
+    val tag: String?,
+    val personName: String
+)
