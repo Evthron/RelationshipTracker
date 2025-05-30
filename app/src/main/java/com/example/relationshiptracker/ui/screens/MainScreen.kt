@@ -455,7 +455,7 @@ fun PersonDetailScreen(
                 title = { Text(person.name) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Text("< Back")
+                        Text("<")
                     }
                 },
                 actions = {
