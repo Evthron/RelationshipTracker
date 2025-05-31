@@ -109,7 +109,7 @@ fun MainScreen(viewModel: MainViewModel) {
             }
         }
     }
-// Collect conversation data
+    // Collect conversation data
     LaunchedEffect(viewMode, selectedTag) {
         Log.d("MainScreen", "Collecting conversations: " +
                 "viewMode=$viewMode, " +
@@ -220,6 +220,7 @@ fun MainScreen(viewModel: MainViewModel) {
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(padding)
+                        .padding(16.dp)
                 ) {
                     when (viewMode) {
                         "ContactList" -> PersonListScreen(
@@ -312,7 +313,6 @@ fun PersonListScreen(
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp)
     ) {
         items(persons) { person ->
             Card(
@@ -592,7 +592,10 @@ fun PersonDetailScreen(
                 title = { Text(person.name) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Text("<")
+                        Icon(
+                            imageVector = Icons.Filled.ArrowBackIosNew,
+                            contentDescription = "Back"
+                        )
                     }
                 },
                 actions = {
@@ -768,117 +771,131 @@ fun ContactView(
     onEditToggle: (String) -> Unit,
     onValueChange: (String, TextFieldValue) -> Unit
 ) {
-    Column {
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 8.dp)
-                .clickable { onEditToggle("name") }
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text("Name", style = MaterialTheme.typography.titleMedium)
-                if (isEditingName) {
-                    OutlinedTextField(
-                        value = name,
-                        onValueChange = { onValueChange("name", it) },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                } else {
-                    Text(name.text.ifBlank { "Click to edit" }, style = MaterialTheme.typography.bodyLarge)
-                }
-            }
-        }
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 8.dp)
-                .clickable { onEditToggle("impression") }
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text("Impression", style = MaterialTheme.typography.titleMedium)
-                if (isEditingImpression) {
-                    OutlinedTextField(
-                        value = impression,
-                        onValueChange = { onValueChange("impression", it) },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                } else {
-                    Text(impression.text.ifBlank { "Click to edit" }, style = MaterialTheme.typography.bodyLarge)
-                }
-            }
-        }
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 8.dp)
-                .clickable { onEditToggle("interests") }
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text("Interests", style = MaterialTheme.typography.titleMedium)
-                if (isEditingInterests) {
-                    OutlinedTextField(
-                        value = interests,
-                        onValueChange = { onValueChange("interests", it) },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                } else {
-                    Text(interests.text.ifBlank { "Click to edit" }, style = MaterialTheme.typography.bodyLarge)
-                }
-            }
-        }
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 8.dp)
-                .clickable { onEditToggle("goals") }
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text("Goals", style = MaterialTheme.typography.titleMedium)
-                if (isEditingGoals) {
-                    OutlinedTextField(
-                        value = goals,
-                        onValueChange = { onValueChange("goals", it) },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                } else {
-                    Text(goals.text.ifBlank { "Click to edit" }, style = MaterialTheme.typography.bodyLarge)
-                }
-            }
-        }
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 8.dp)
-                .clickable { onEditToggle("category") }
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text("Category", style = MaterialTheme.typography.titleMedium)
-                if (isEditingCategory) {
-                    OutlinedTextField(
-                        value = category,
-                        onValueChange = { onValueChange("category", it) },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                } else {
-                    Text(category.text.ifBlank { "Click to edit" }, style = MaterialTheme.typography.bodyLarge)
-                }
-            }
-        }
-        Spacer(modifier = Modifier.height(16.dp))
-        Text("Conversation Statistics", style = MaterialTheme.typography.titleLarge)
-        LazyColumn {
-            items(ConversationCategory.values().toList()) { category ->
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 4.dp)
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text(
-                            text = "${category.name}: ${conversationStats[category] ?: 0}",
-                            style = MaterialTheme.typography.bodyLarge
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(vertical = 8.dp)
+    ) {
+        item {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp)
+                    .clickable { onEditToggle("name") }
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text("Name", style = MaterialTheme.typography.titleMedium)
+                    if (isEditingName) {
+                        OutlinedTextField(
+                            value = name,
+                            onValueChange = { onValueChange("name", it) },
+                            modifier = Modifier.fillMaxWidth()
                         )
+                    } else {
+                        Text(name.text.ifBlank { "Click to edit" }, style = MaterialTheme.typography.bodyLarge)
                     }
+                }
+            }
+        }
+        item {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp)
+                    .clickable { onEditToggle("impression") }
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text("Impression", style = MaterialTheme.typography.titleMedium)
+                    if (isEditingImpression) {
+                        OutlinedTextField(
+                            value = impression,
+                            onValueChange = { onValueChange("impression", it) },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    } else {
+                        Text(impression.text.ifBlank { "Click to edit" }, style = MaterialTheme.typography.bodyLarge)
+                    }
+                }
+            }
+        }
+        item {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp)
+                    .clickable { onEditToggle("interests") }
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text("Interests", style = MaterialTheme.typography.titleMedium)
+                    if (isEditingInterests) {
+                        OutlinedTextField(
+                            value = interests,
+                            onValueChange = { onValueChange("interests", it) },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    } else {
+                        Text(interests.text.ifBlank { "Click to edit" }, style = MaterialTheme.typography.bodyLarge)
+                    }
+                }
+            }
+        }
+        item {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp)
+                    .clickable { onEditToggle("goals") }
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text("Goals", style = MaterialTheme.typography.titleMedium)
+                    if (isEditingGoals) {
+                        OutlinedTextField(
+                            value = goals,
+                            onValueChange = { onValueChange("goals", it) },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    } else {
+                        Text(goals.text.ifBlank { "Click to edit" }, style = MaterialTheme.typography.bodyLarge)
+                    }
+                }
+            }
+        }
+        item {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp)
+                    .clickable { onEditToggle("category") }
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text("Category", style = MaterialTheme.typography.titleMedium)
+                    if (isEditingCategory) {
+                        OutlinedTextField(
+                            value = category,
+                            onValueChange = { onValueChange("category", it) },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    } else {
+                        Text(category.text.ifBlank { "Click to edit" }, style = MaterialTheme.typography.bodyLarge)
+                    }
+                }
+            }
+        }
+        item {
+            Spacer(modifier = Modifier.height(16.dp))
+            Text("Conversation Statistics", style = MaterialTheme.typography.titleLarge)
+        }
+        items(ConversationCategory.values().toList()) { category ->
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = "${category.name}: ${conversationStats[category] ?: 0}",
+                        style = MaterialTheme.typography.bodyLarge
+                    )
                 }
             }
         }
@@ -1034,8 +1051,6 @@ fun EditConversationDialog(
                     label = { Text("Conversation Content") },
                     modifier = Modifier.fillMaxWidth()
                 )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text("Select Tag:")
                 listOf("Emotional", "Practical", "Validation", "Share", "Information", "Casual").forEach { tag ->
                     Row(
                         modifier = Modifier.fillMaxWidth(),
