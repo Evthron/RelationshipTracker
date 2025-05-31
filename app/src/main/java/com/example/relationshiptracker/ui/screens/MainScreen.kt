@@ -24,6 +24,7 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.media3.common.util.Log
 import androidx.media3.common.util.UnstableApi
+import com.example.relationshiptracker.data.db.dao.ConversationWithPerson
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import java.text.SimpleDateFormat
@@ -56,6 +57,8 @@ fun MainScreen(viewModel: MainViewModel) {
     var conversationStats by remember { mutableStateOf<Map<ConversationCategory, Int>>(emptyMap()) }
     // selectedTag: The selected one of the tags (All, Emotional, Practical ...) shown on AllConversations
     var selectedTag by remember { mutableStateOf<String?>(null) }
+
+    var conversationsWithPersons by remember { mutableStateOf<List<ConversationWithPerson>>(emptyList()) }
 
 
     // FilterDialog:
@@ -141,6 +144,7 @@ fun MainScreen(viewModel: MainViewModel) {
     }
 
     // Collect conversation data when chosen conversation tag changes
+    // Not sure why need to re-collect conversation when viewMode changes, kept for safe
     LaunchedEffect(viewMode, selectedTag) {
         Log.d("MainScreen", "Collecting conversations: " +
                 "viewMode=$viewMode, " +
@@ -168,6 +172,8 @@ fun MainScreen(viewModel: MainViewModel) {
             }.collect() // Collect the combined flow
         }
     }
+
+    // If selected some person, the whole screen becomes PersonDetailScreen
     when {
         selectedPerson != null -> {
             PersonDetailScreen(
@@ -184,8 +190,8 @@ fun MainScreen(viewModel: MainViewModel) {
                 }
             )
         }
+        // If not selected, the main screen keeps the same top and bottom bar
         else -> {
-            // Main menu screen
             Scaffold(
                 topBar = {
                     TopAppBar(
@@ -264,6 +270,7 @@ fun MainScreen(viewModel: MainViewModel) {
                         .padding(padding)
                         .padding(16.dp)
                 ) {
+                    // Switch between AllConversations and ContactList for inner view.
                     when (viewMode) {
                         "ContactList" -> PersonListScreen(
                             persons = persons,
@@ -271,7 +278,7 @@ fun MainScreen(viewModel: MainViewModel) {
                             allCategories = persons.map { it.category }.distinct()
                                 .filter { it.isNotBlank() }
                         )
-                        "AllConversations" -> ConversationView(
+                        "AllConversations" -> AllConversationsView(
                             viewModel = viewModel,
                             conversations = conversations,
                             conversationStats = conversationStats,
@@ -377,6 +384,92 @@ fun PersonListScreen(
                             text = "Last Contact: ${
                                 SimpleDateFormat("yyyy-MM-dd").format(Date(person.lastContactTime))
                             }",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun AllConversationsView(
+    viewModel: MainViewModel,
+    conversations: List<Conversation>,
+    conversationStats: Map<ConversationCategory, Int>,
+    selectedTag: String?,
+    onTagSelect: (String) -> Unit,
+    onConversationEdit: (Conversation) -> Unit
+) {
+    var localSelectedTag by remember { mutableStateOf(selectedTag) }
+    Column {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            listOf("All", "Emotional", "Practical", "Validation", "Share", "Information", "Casual").forEach { tag ->
+                val count = when (tag) {
+                    "All" -> conversationStats.values.sum()
+                    "Emotional" -> conversationStats[ConversationCategory.EMOTIONAL] ?: 0
+                    "Practical" -> conversationStats[ConversationCategory.PRACTICAL] ?: 0
+                    "Validation" -> conversationStats[ConversationCategory.VALIDATION] ?: 0
+                    "Share" -> conversationStats[ConversationCategory.SHARE] ?: 0
+                    "Information" -> conversationStats[ConversationCategory.INFORMATION] ?: 0
+                    "Casual" -> conversationStats[ConversationCategory.CASUAL] ?: 0
+                    else -> 0
+                }
+                Button(
+                    onClick = {
+                        localSelectedTag = if (tag == "All") null else tag
+                        onTagSelect(tag)
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (localSelectedTag == tag || (tag == "All" && localSelectedTag == null))
+                            MaterialTheme.colorScheme.primary
+                        else
+                            MaterialTheme.colorScheme.secondary
+                    )
+                ) {
+                    Text("$tag ($count)")
+                }
+            }
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+        LazyColumn {
+            items(conversations) { conversation ->
+                var personName by remember { mutableStateOf("") }
+
+                // Fetch person name for this conversation
+                LaunchedEffect(conversation.personId) {
+                    viewModel.getPersonById(conversation.personId)?.let { person ->
+                        personName = person.name
+                    } ?: run { personName = "Unknown" }
+                }
+
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp)
+                        .clickable { onConversationEdit(conversation) }
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(
+                            text = conversation.content,
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                        Text(
+                            text = "Tag: ${conversation.tag}",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                        Text(
+                            text = "With: ${personName}",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                        Text(
+                            text = SimpleDateFormat("yyyy-MM-dd HH:mm").format(Date(conversation.timestamp)),
                             style = MaterialTheme.typography.bodySmall
                         )
                     }
