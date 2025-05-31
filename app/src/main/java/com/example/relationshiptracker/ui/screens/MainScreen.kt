@@ -11,6 +11,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material.icons.filled.ArrowBackIosNew
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -594,11 +596,17 @@ fun PersonDetailScreen(
                     }
                 },
                 actions = {
-                    Button(onClick = { showAddConversationDialog = true }) {
-                        Text("Add Conversation")
+                    IconButton(onClick = { showAddConversationDialog = true }) {
+                        Icon(
+                            imageVector = Icons.Filled.Add,
+                            contentDescription = "Add Conversation"
+                        )
                     }
-                    Button(onClick = { pendingDeletePerson = person }) {
-                        Text("Delete")
+                    IconButton(onClick = { pendingDeletePerson = person }) {
+                        Icon(
+                            imageVector = Icons.Filled.Delete,
+                            contentDescription = "Delete Contact"
+                        )
                     }
                 }
             )
