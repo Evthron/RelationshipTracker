@@ -1110,7 +1110,6 @@ fun ConversationView(
         }
     }
 }
-
 @Composable
 fun AddConversationDialog(
     onDismiss: () -> Unit,
@@ -1128,20 +1127,33 @@ fun AddConversationDialog(
                     value = content,
                     onValueChange = { content = it },
                     label = { Text("Conversation Content") },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    textStyle = MaterialTheme.typography.bodyLarge
                 )
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(4.dp))
                 Text("Select Tag:")
-                listOf("Emotional", "Practical", "Validation", "Share", "Information", "Casual").forEach { tag ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        RadioButton(
-                            selected = selectedTag == tag,
-                            onClick = { selectedTag = tag }
-                        )
-                        Text(tag)
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp), // Reduced gap
+                    verticalArrangement = Arrangement.spacedBy(2.dp) // Reduced gap
+                ) {
+                    listOf("Emotional", "Practical", "Validation", "Share", "Information", "Casual").forEach { tag ->
+                        Button(
+                            onClick = { selectedTag = tag },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (selectedTag == tag)
+                                    MaterialTheme.colorScheme.primary
+                                else
+                                    MaterialTheme.colorScheme.secondary
+                            ),
+                            modifier = Modifier.padding(vertical = 1.dp), // Reduced padding
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp) // Tighter content padding
+                        ) {
+                            Text(
+                                text = tag,
+                                style = MaterialTheme.typography.labelMedium // Smaller font size
+                            )
+                        }
                     }
                 }
             }
@@ -1184,18 +1196,33 @@ fun EditConversationDialog(
                     value = content,
                     onValueChange = { content = it },
                     label = { Text("Conversation Content") },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    textStyle = MaterialTheme.typography.bodyLarge
                 )
-                listOf("Emotional", "Practical", "Validation", "Share", "Information", "Casual").forEach { tag ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        RadioButton(
-                            selected = selectedTag == tag,
-                            onClick = { selectedTag = tag }
-                        )
-                        Text(tag)
+                Spacer(modifier = Modifier.height(4.dp))
+                Text("Select Tag:")
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp), // Reduced gap
+                    verticalArrangement = Arrangement.spacedBy(2.dp) // Reduced gap
+                ) {
+                    listOf("Emotional", "Practical", "Validation", "Share", "Information", "Casual").forEach { tag ->
+                        Button(
+                            onClick = { selectedTag = tag },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (selectedTag == tag)
+                                    MaterialTheme.colorScheme.primary
+                                else
+                                    MaterialTheme.colorScheme.secondary
+                            ),
+                            modifier = Modifier.padding(vertical = 1.dp), // Reduced padding
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp) // Tighter content padding
+                        ) {
+                            Text(
+                                text = tag,
+                                style = MaterialTheme.typography.labelMedium // Smaller font size
+                            )
+                        }
                     }
                 }
             }
@@ -1237,7 +1264,6 @@ fun EditConversationDialog(
         }
     )
 }
-
 fun List<Person>.sortedBySortOption(sortOption: String, ascending: Boolean): List<Person> {
     return when (sortOption) {
         "Name" -> if (ascending) sortedBy { it.name } else sortedByDescending { it.name }
