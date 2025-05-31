@@ -28,4 +28,6 @@ interface PersonDao {
     @Query("SELECT * FROM persons WHERE category IN (:categories) ORDER BY lastContactTime DESC")
     fun getPersonsByCategories(categories: Set<String>): Flow<List<Person>>
 
+    @Query("SELECT * FROM persons")
+    suspend fun getAllPersonsSync(): List<Person>
 }

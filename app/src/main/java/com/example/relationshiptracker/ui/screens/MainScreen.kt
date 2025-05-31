@@ -1,5 +1,7 @@
 package com.example.relationshiptracker.ui.screens
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -13,6 +15,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.ArrowBackIosNew
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Upload
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -51,6 +54,13 @@ fun MainScreen(viewModel: MainViewModel) {
     var sortAscending by remember { mutableStateOf(false) }
     var selectedTag by remember { mutableStateOf<String?>(null) }
     var pendingDeleteConversation by remember { mutableStateOf<Conversation?>(null) }
+
+    // SAF launcher for exporting database
+    val exportLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("text/csv")
+    ) { uri ->
+        uri?.let { viewModel.exportDatabaseToCsv(it) }
+    }
 
     // Log initial state
     LaunchedEffect(Unit) {
@@ -178,6 +188,17 @@ fun MainScreen(viewModel: MainViewModel) {
                                     Icon(
                                         imageVector = Icons.Filled.Add,
                                         contentDescription = "Add new person"
+                                    )
+                                }
+                            }
+                            // Only show export button in All Conversations view
+                            else{
+                                IconButton(onClick = {
+                                    exportLauncher.launch("relationship_tracker_export_${System.currentTimeMillis()}.csv")
+                                }) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Upload,
+                                        contentDescription = "Export database"
                                     )
                                 }
                             }

@@ -1,6 +1,7 @@
 package com.example.relationshiptracker.ui.viewmodel
 
 import android.content.Context
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -11,10 +12,14 @@ import com.example.relationshiptracker.data.db.entities.Conversation
 import com.example.relationshiptracker.data.db.entities.ConversationCategory
 import com.example.relationshiptracker.data.db.entities.Person
 import com.example.relationshiptracker.data.db.dao.ConversationWithPerson
+import com.opencsv.CSVWriter
+import java.text.SimpleDateFormat
+import java.util.*
 
 class MainViewModel(context: Context) : ViewModel() {
     private val personDao = AppDatabase.getDatabase(context).personDao()
     private val conversationDao = AppDatabase.getDatabase(context).conversationDao()
+    private val appContext = context.applicationContext
 
     val allPersons: Flow<List<Person>> = personDao.getAllPersons()
 
@@ -130,6 +135,75 @@ class MainViewModel(context: Context) : ViewModel() {
 
     fun getAllConversationStats(): Flow<Map<ConversationCategory, Int>> {
         return conversationDao.getAllConversationStats()
+    }
+
+    fun exportDatabaseToCsv(uri: Uri) {
+        viewModelScope.launch {
+            try {
+                val persons = personDao.getAllPersonsSync()
+                val conversations = conversationDao.getAllConversationsSync()
+
+                appContext.contentResolver.openOutputStream(uri)?.use { outputStream ->
+                    CSVWriter(outputStream.writer()).use { csvWriter ->
+                        // Write Persons table
+                        csvWriter.writeNext(arrayOf("Persons Table"))
+                        csvWriter.writeNext(
+                            arrayOf(
+                                "id",
+                                "name",
+                                "impression",
+                                "interests",
+                                "goals",
+                                "category",
+                                "lastContactTime"
+                            )
+                        )
+                        persons.forEach { person ->
+                            csvWriter.writeNext(
+                                arrayOf(
+                                    person.id.toString(),
+                                    person.name,
+                                    person.impression,
+                                    person.interests,
+                                    person.goals,
+                                    person.category,
+                                    SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(Date(person.lastContactTime))
+                                )
+                            )
+                        }
+
+                        // Write Conversations table
+                        csvWriter.writeNext(arrayOf("")) // Separator
+                        csvWriter.writeNext(arrayOf("Conversations Table"))
+                        csvWriter.writeNext(
+                            arrayOf(
+                                "id",
+                                "personId",
+                                "content",
+                                "tag",
+                                "timestamp",
+                                "category"
+                            )
+                        )
+                        conversations.forEach { conversation ->
+                            csvWriter.writeNext(
+                                arrayOf(
+                                    conversation.id.toString(),
+                                    conversation.personId.toString(),
+                                    conversation.content,
+                                    conversation.tag ?: "",
+                                    SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(Date(conversation.timestamp)),
+                                    conversation.category.toString()
+                                )
+                            )
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                // Log error (consider adding a Toast or Snackbar in UI to notify user)
+                e.printStackTrace()
+            }
+        }
     }
 }
 

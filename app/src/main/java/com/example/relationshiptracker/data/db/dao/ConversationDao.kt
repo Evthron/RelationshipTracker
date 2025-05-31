@@ -97,6 +97,9 @@ interface ConversationDao {
 
     @Query("SELECT MAX(timestamp) FROM conversations WHERE personId = :personId")
     suspend fun getLastConversationTime(personId: Int): Long?
+
+    @Query("SELECT * FROM conversations")
+    suspend fun getAllConversationsSync(): List<Conversation>
 }
 
 data class ConversationStat(val category: ConversationCategory, val count: Int)
