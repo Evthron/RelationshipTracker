@@ -403,12 +403,12 @@ fun AllConversationsView(
     onConversationEdit: (Conversation) -> Unit
 ) {
     var localSelectedTag by remember { mutableStateOf(selectedTag) }
+
     Column {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        FlowRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             listOf("All", "Emotional", "Practical", "Validation", "Share", "Information", "Casual").forEach { tag ->
                 val count = when (tag) {
@@ -431,9 +431,14 @@ fun AllConversationsView(
                             MaterialTheme.colorScheme.primary
                         else
                             MaterialTheme.colorScheme.secondary
-                    )
+                    ),
+                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 4.dp),
+                    modifier = Modifier.height(28.dp)
                 ) {
-                    Text("$tag ($count)")
+                    Text(
+                        text = "$tag ($count)",
+                        style = MaterialTheme.typography.labelLarge
+                    )
                 }
             }
         }
@@ -461,16 +466,16 @@ fun AllConversationsView(
                             style = MaterialTheme.typography.bodyLarge
                         )
                         Text(
-                            text = "Tag: ${conversation.tag}",
-                            style = MaterialTheme.typography.bodySmall
+                            text = "Person: $personName",
+                            style = MaterialTheme.typography.bodyMedium
                         )
                         Text(
-                            text = "With: ${personName}",
-                            style = MaterialTheme.typography.bodySmall
+                            text = "Tag: ${conversation.tag}",
+                            style = MaterialTheme.typography.bodyMedium
                         )
                         Text(
                             text = SimpleDateFormat("yyyy-MM-dd HH:mm").format(Date(conversation.timestamp)),
-                            style = MaterialTheme.typography.bodySmall
+                            style = MaterialTheme.typography.bodyMedium
                         )
                     }
                 }
@@ -1049,11 +1054,10 @@ fun ConversationView(
     var localSelectedTag by remember { mutableStateOf(selectedTag) }
 
     Column {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        FlowRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             listOf("All", "Emotional", "Practical", "Validation", "Share", "Information", "Casual").forEach { tag ->
                 val count = when (tag) {
@@ -1076,9 +1080,14 @@ fun ConversationView(
                             MaterialTheme.colorScheme.primary
                         else
                             MaterialTheme.colorScheme.secondary
-                    )
+                    ),
+                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 4.dp),
+                    modifier = Modifier.height(28.dp)
                 ) {
-                    Text("$tag ($count)")
+                    Text(
+                        text = "$tag ($count)",
+                        style = MaterialTheme.typography.labelLarge
+                    )
                 }
             }
         }
@@ -1134,8 +1143,8 @@ fun AddConversationDialog(
                 Text("Select Tag:")
                 FlowRow(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp), // Reduced gap
-                    verticalArrangement = Arrangement.spacedBy(2.dp) // Reduced gap
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
                     listOf("Emotional", "Practical", "Validation", "Share", "Information", "Casual").forEach { tag ->
                         Button(
@@ -1146,12 +1155,12 @@ fun AddConversationDialog(
                                 else
                                     MaterialTheme.colorScheme.secondary
                             ),
-                            modifier = Modifier.padding(vertical = 1.dp), // Reduced padding
+                            modifier = Modifier.padding(vertical = 1.dp),
                             contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp) // Tighter content padding
                         ) {
                             Text(
                                 text = tag,
-                                style = MaterialTheme.typography.labelMedium // Smaller font size
+                                style = MaterialTheme.typography.labelMedium
                             )
                         }
                     }
@@ -1203,8 +1212,8 @@ fun EditConversationDialog(
                 Text("Select Tag:")
                 FlowRow(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp), // Reduced gap
-                    verticalArrangement = Arrangement.spacedBy(2.dp) // Reduced gap
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
                     listOf("Emotional", "Practical", "Validation", "Share", "Information", "Casual").forEach { tag ->
                         Button(
@@ -1215,12 +1224,12 @@ fun EditConversationDialog(
                                 else
                                     MaterialTheme.colorScheme.secondary
                             ),
-                            modifier = Modifier.padding(vertical = 1.dp), // Reduced padding
+                            modifier = Modifier.padding(vertical = 1.dp),
                             contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp) // Tighter content padding
                         ) {
                             Text(
                                 text = tag,
-                                style = MaterialTheme.typography.labelMedium // Smaller font size
+                                style = MaterialTheme.typography.labelMedium
                             )
                         }
                     }
