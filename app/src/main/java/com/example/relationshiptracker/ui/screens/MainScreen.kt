@@ -16,6 +16,7 @@ import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.ArrowBackIosNew
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Upload
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -78,11 +79,17 @@ fun MainScreen(viewModel: MainViewModel) {
     var pendingDeleteConversation by remember { mutableStateOf<Conversation?>(null) }
 
 
-    // SAF launcher for exporting database
+    // SAF launchers for exporting and importing database
     val exportLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("text/csv")
     ) { uri ->
         uri?.let { viewModel.exportDatabaseToCsv(it) }
+    }
+
+    val importLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        uri?.let { viewModel.importDatabaseFromCsv(it) }
     }
 
     // Log initial state
@@ -218,14 +225,22 @@ fun MainScreen(viewModel: MainViewModel) {
                                     )
                                 }
                             }
-                            // Only show export button in All Conversations view
-                            else{
+                            // Show export and import buttons in All Conversations view
+                            else {
                                 IconButton(onClick = {
                                     exportLauncher.launch("relationship_tracker_export_${System.currentTimeMillis()}.csv")
                                 }) {
                                     Icon(
                                         imageVector = Icons.Filled.Upload,
                                         contentDescription = "Export database"
+                                    )
+                                }
+                                IconButton(onClick = {
+                                    importLauncher.launch(arrayOf("text/comma-separated-values", "text/csv", "application/csv"))
+                                }) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Download,
+                                        contentDescription = "Import database"
                                     )
                                 }
                             }

@@ -12,9 +12,11 @@ import com.example.relationshiptracker.data.db.entities.Conversation
 import com.example.relationshiptracker.data.db.entities.ConversationCategory
 import com.example.relationshiptracker.data.db.entities.Person
 import com.example.relationshiptracker.data.db.dao.ConversationWithPerson
+import com.opencsv.CSVReader
 import com.opencsv.CSVWriter
 import java.text.SimpleDateFormat
 import java.util.*
+import java.text.ParseException
 
 class MainViewModel(context: Context) : ViewModel() {
     private val personDao = AppDatabase.getDatabase(context).personDao()
@@ -196,6 +198,84 @@ class MainViewModel(context: Context) : ViewModel() {
                                     conversation.category.toString()
                                 )
                             )
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                // Log error (consider adding a Toast or Snackbar in UI to notify user)
+                e.printStackTrace()
+            }
+        }
+    }
+
+    fun importDatabaseFromCsv(uri: Uri) {
+        viewModelScope.launch {
+            try {
+                appContext.contentResolver.openInputStream(uri)?.use { inputStream ->
+                    CSVReader(inputStream.reader()).use { csvReader ->
+                        val allRecords = csvReader.readAll()
+                        val header = allRecords.firstOrNull()
+                        if (header == null || header.size < 5 || header[0] != "FeatureName" || header[1] != "Timestamp" || header[2] != "Value" || header[3] != "Label" || header[4] != "Note") {
+                            // Log error or notify user of invalid CSV format
+                            return@use
+                        }
+
+                        val dateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSXXX", Locale.US)
+                        allRecords.drop(1).forEach { record ->
+                            if (record.size < 5) return@forEach // Skip incomplete records
+                            val featureName = record[0].trim().replace(Regex("[😭🤝🎉🎁ℹ️]"), "") // Remove emojis
+                            val timestampStr = record[1].trim()
+                            val value = record[2].trim()
+                            val label = record[3].trim()
+                            val note = record[4].trim()
+
+                            if (label.isBlank() || note.isBlank()) return@forEach // Skip records with empty label or note
+                            if (value.toDoubleOrNull() != 1.0) return@forEach // Skip if value is not 1.0
+
+                            try {
+                                val timestamp = dateFormat.parse(timestampStr)?.time ?: return@forEach
+                                val category = when (featureName) {
+                                    "Emotional" -> ConversationCategory.EMOTIONAL
+                                    "Practical" -> ConversationCategory.PRACTICAL
+                                    "Validation" -> ConversationCategory.VALIDATION
+                                    "Share" -> ConversationCategory.SHARE
+                                    "Information" -> ConversationCategory.INFORMATION
+                                    else -> ConversationCategory.CASUAL
+                                }
+
+                                // Check if person exists, or create a new one
+                                val existingPerson = personDao.getAllPersonsSync().find { it.name == label }
+                                val personId = if (existingPerson != null) {
+                                    existingPerson.id
+                                } else {
+                                    personDao.insert(Person(
+                                        name = label, category = "Imported",
+                                        impression = "",
+                                        interests = "",
+                                        goals = ""
+                                    )).toInt()
+                                }
+
+                                // Insert conversation
+                                conversationDao.insert(
+                                    Conversation(
+                                        personId = personId,
+                                        content = note,
+                                        tag = featureName,
+                                        timestamp = timestamp,
+                                        category = category
+                                    )
+                                )
+
+                                // Update person's lastContactTime
+                                val person = personDao.getPersonById(personId)
+                                person?.let {
+                                    personDao.update(it.copy(lastContactTime = maxOf(it.lastContactTime, timestamp)))
+                                }
+                            } catch (e: ParseException) {
+                                // Log error or notify user of invalid timestamp
+                                e.printStackTrace()
+                            }
                         }
                     }
                 }
