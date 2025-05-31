@@ -39,21 +39,41 @@ import kotlinx.coroutines.flow.collect
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(viewModel: MainViewModel) {
+    // viewMode: AllConversations or ContactList
     var viewMode by remember { mutableStateOf("ContactList") }
+
+    // ContactList:
+    // selectedPerson: The person picked on ContactList
     var selectedPerson by remember { mutableStateOf<Person?>(null) }
+    // persons: The filtered and sorted people list shown on ContactList
     var persons by remember { mutableStateOf<List<Person>>(emptyList()) }
-    var allCategories by remember { mutableStateOf<List<String>>(emptyList()) }
+
+
+    // AllConversations:
+    // conversations: The conversations shown on AllConversations
     var conversations by remember { mutableStateOf<List<Conversation>>(emptyList()) }
+    // conversationStats: Stats of the conversation show on the tag buttons on AllConversations
+    var conversationStats by remember { mutableStateOf<Map<ConversationCategory, Int>>(emptyMap()) }
+    // selectedTag: The selected one of the tags (All, Emotional, Practical ...) shown on AllConversations
+    var selectedTag by remember { mutableStateOf<String?>(null) }
+
+
+    // FilterDialog:
+    // allCategories: For FilterDialog to show all the categories correctly, unaffected by changes in persons
+    var allCategories by remember { mutableStateOf<List<String>>(emptyList()) }
+    // selectedCategories: The categories for FilterDialog to filter persons
+    var selectedCategories by remember { mutableStateOf(setOf<String>()) }
+
+
+    // Flags
     var showAddPersonDialog by remember { mutableStateOf(false) }
     var showFilterDialog by remember { mutableStateOf(false) }
     var showSortDialog by remember { mutableStateOf(false) }
     var showEditConversationDialog by remember { mutableStateOf<Conversation?>(null) }
-    var conversationStats by remember { mutableStateOf<Map<ConversationCategory, Int>>(emptyMap()) }
-    var selectedCategories by remember { mutableStateOf(setOf<String>()) }
     var sortOption by remember { mutableStateOf("Last Contact") }
     var sortAscending by remember { mutableStateOf(false) }
-    var selectedTag by remember { mutableStateOf<String?>(null) }
     var pendingDeleteConversation by remember { mutableStateOf<Conversation?>(null) }
+
 
     // SAF launcher for exporting database
     val exportLauncher = rememberLauncherForActivityResult(
@@ -100,7 +120,7 @@ fun MainScreen(viewModel: MainViewModel) {
         Log.d("MainScreen", "selectedCategories changed to: $selectedCategories")
     }
 
-    // Collect people data
+    // Re-order the AllContacts page when sort or filter options changes
     LaunchedEffect(selectedCategories, sortOption, sortAscending) {
         Log.d("MainScreen", "Collecting persons with filters: " +
                 "categories=$selectedCategories, " +
@@ -119,7 +139,8 @@ fun MainScreen(viewModel: MainViewModel) {
             }
         }
     }
-    // Collect conversation data
+
+    // Collect conversation data when chosen conversation tag changes
     LaunchedEffect(viewMode, selectedTag) {
         Log.d("MainScreen", "Collecting conversations: " +
                 "viewMode=$viewMode, " +
