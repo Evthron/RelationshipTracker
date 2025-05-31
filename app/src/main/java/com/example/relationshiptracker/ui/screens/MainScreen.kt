@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.media3.common.util.Log
 import androidx.media3.common.util.UnstableApi
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -27,7 +28,7 @@ import com.example.relationshiptracker.data.db.entities.Conversation
 import com.example.relationshiptracker.ui.viewmodel.MainViewModel
 import com.example.relationshiptracker.data.db.entities.Person
 import com.example.relationshiptracker.data.db.entities.ConversationCategory
-import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.collect
 
 @androidx.annotation.OptIn(UnstableApi::class)
 @OptIn(ExperimentalMaterial3Api::class)
@@ -106,8 +107,7 @@ fun MainScreen(viewModel: MainViewModel) {
             }
         }
     }
-
-    // Collect conversation data
+// Collect conversation data
     LaunchedEffect(viewMode, selectedTag) {
         Log.d("MainScreen", "Collecting conversations: " +
                 "viewMode=$viewMode, " +
@@ -115,24 +115,26 @@ fun MainScreen(viewModel: MainViewModel) {
         )
 
         if (viewMode == "AllConversations") {
-            if (selectedTag == null) {
-                viewModel.getAllConversations().collectLatest {
-                    conversations = it
-                    Log.d("MainScreen", "Updated all conversations: ${it.size} items")
-                }
-            } else {
-                viewModel.getAllConversationsByTag(selectedTag!!).collectLatest {
-                    conversations = it
-                    Log.d("MainScreen", "Updated filtered conversations: ${it.size} items")
-                }
-            }
-            viewModel.getAllConversationStats().collectLatest {
-                conversationStats = it
-                Log.d("MainScreen", "Updated conversation stats: $it")
-            }
+            // Determine the conversations flow based on selectedTag
+            val conversationsFlow = selectedTag?.let { tag ->
+                viewModel.getAllConversationsByTag(tag)
+            } ?: viewModel.getAllConversations()
+
+            // Combine both flows
+            combine(
+                conversationsFlow,
+                viewModel.getAllConversationStats()
+            ) { convs, stats ->
+                // Update both values together
+                conversations = convs
+                conversationStats = stats
+
+                // Log updates
+                Log.d("MainScreen", "Updated conversations: ${convs.size} items")
+                Log.d("MainScreen", "Updated conversation stats: $stats")
+            }.collect() // Collect the combined flow
         }
     }
-
     when {
         selectedPerson != null -> {
             PersonDetailScreen(
