@@ -25,7 +25,7 @@ class MainViewModel(context: Context) : ViewModel() {
 
     val allPersons: Flow<List<Person>> = personDao.getAllPersons()
 
-    fun addPerson(name: String, impression: String, interests : String, goals: String, category: String) {
+    fun addPerson(name: String, impression: String, interests: String, goals: String, category: String) {
         viewModelScope.launch {
             personDao.insert(
                 Person(
@@ -74,7 +74,9 @@ class MainViewModel(context: Context) : ViewModel() {
             conversationDao.insert(conversation)
             val person = personDao.getPersonById(personId)
             person?.let {
-                personDao.update(it.copy(lastContactTime = conversation.timestamp))
+                // Update lastContactTime with the latest conversation timestamp
+                val latestConversationTime = conversationDao.getLastConversationTime(personId) ?: 0L
+                personDao.update(it.copy(lastContactTime = latestConversationTime))
             }
         }
     }
@@ -84,7 +86,9 @@ class MainViewModel(context: Context) : ViewModel() {
             conversationDao.update(conversation)
             val person = personDao.getPersonById(conversation.personId)
             person?.let {
-                personDao.update(it.copy(lastContactTime = conversation.timestamp))
+                // Update lastContactTime with the latest conversation timestamp
+                val latestConversationTime = conversationDao.getLastConversationTime(conversation.personId) ?: 0L
+                personDao.update(it.copy(lastContactTime = latestConversationTime))
             }
         }
     }
@@ -92,6 +96,12 @@ class MainViewModel(context: Context) : ViewModel() {
     fun deleteConversation(conversation: Conversation) {
         viewModelScope.launch {
             conversationDao.delete(conversation)
+            val person = personDao.getPersonById(conversation.personId)
+            person?.let {
+                // Update lastContactTime with the latest conversation timestamp after deletion
+                val latestConversationTime = conversationDao.getLastConversationTime(conversation.personId) ?: 0L
+                personDao.update(it.copy(lastContactTime = latestConversationTime))
+            }
         }
     }
 
@@ -253,7 +263,8 @@ class MainViewModel(context: Context) : ViewModel() {
                                     existingPerson.id
                                 } else {
                                     personDao.insert(Person(
-                                        name = label, category = "Imported",
+                                        name = label,
+                                        category = "Imported",
                                         impression = "",
                                         interests = "",
                                         goals = ""
