@@ -25,7 +25,7 @@ class MainViewModel(context: Context) : ViewModel() {
 
     val allPersons: Flow<List<Person>> = personDao.getAllPersons()
 
-    fun addPerson(name: String, impression: String, interests: String, goals: String, category: String) {
+    fun addPerson(name: String, impression: String, interests : String, goals: String, category: String) {
         viewModelScope.launch {
             personDao.insert(
                 Person(
@@ -55,13 +55,13 @@ class MainViewModel(context: Context) : ViewModel() {
         return personDao.getPersonById(id)
     }
 
-    fun addConversation(personId: Int, content: String, tag: String?) {
+    fun addConversation(personId: Int, content: String, tag: String?, timestamp: Long) {
         viewModelScope.launch {
             val conversation = Conversation(
                 personId = personId,
                 content = content,
                 tag = tag ?: "Casual",
-                timestamp = System.currentTimeMillis(),
+                timestamp = timestamp,
                 category = when (tag) {
                     "Emotional" -> ConversationCategory.EMOTIONAL
                     "Practical" -> ConversationCategory.PRACTICAL
@@ -82,6 +82,10 @@ class MainViewModel(context: Context) : ViewModel() {
     fun updateConversation(conversation: Conversation) {
         viewModelScope.launch {
             conversationDao.update(conversation)
+            val person = personDao.getPersonById(conversation.personId)
+            person?.let {
+                personDao.update(it.copy(lastContactTime = conversation.timestamp))
+            }
         }
     }
 

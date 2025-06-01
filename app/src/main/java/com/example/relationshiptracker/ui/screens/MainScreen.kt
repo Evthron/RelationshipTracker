@@ -8,7 +8,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.Add
@@ -30,12 +29,18 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import java.text.SimpleDateFormat
 import java.util.*
-
 import com.example.relationshiptracker.data.db.entities.Conversation
 import com.example.relationshiptracker.ui.viewmodel.MainViewModel
 import com.example.relationshiptracker.data.db.entities.Person
 import com.example.relationshiptracker.data.db.entities.ConversationCategory
 import kotlinx.coroutines.flow.collect
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.TimePicker
+import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.material3.rememberTimePickerState
+
 
 @androidx.annotation.OptIn(UnstableApi::class)
 @OptIn(ExperimentalMaterial3Api::class)
@@ -345,6 +350,7 @@ fun MainScreen(viewModel: MainViewModel) {
             if (showEditConversationDialog != null) {
                 EditConversationDialog(
                     conversation = showEditConversationDialog!!,
+                    viewModel = viewModel,
                     onDismiss = { showEditConversationDialog = null },
                     onUpdate = { updatedConversation ->
                         viewModel.updateConversation(updatedConversation)
@@ -865,8 +871,8 @@ fun PersonDetailScreen(
     if (showAddConversationDialog) {
         AddConversationDialog(
             onDismiss = { showAddConversationDialog = false },
-            onAdd = { content, tag ->
-                viewModel.addConversation(person.id, content, tag)
+            onAdd = { content, tag, timestamp ->
+                viewModel.addConversation(person.id, content, tag, timestamp)
                 showAddConversationDialog = false
             }
         )
@@ -875,6 +881,7 @@ fun PersonDetailScreen(
     if (showEditConversationDialog != null) {
         EditConversationDialog(
             conversation = showEditConversationDialog!!,
+            viewModel = viewModel,
             onDismiss = { showEditConversationDialog = null },
             onUpdate = { updatedConversation ->
                 viewModel.updateConversation(updatedConversation)
@@ -1134,19 +1141,42 @@ fun ConversationView(
         }
     }
 }
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddConversationDialog(
     onDismiss: () -> Unit,
-    onAdd: (String, String) -> Unit
+    onAdd: (String, String, Long) -> Unit
 ) {
     var content by remember { mutableStateOf(TextFieldValue()) }
     var selectedTag by remember { mutableStateOf("Emotional") }
+    var showDatePicker by remember { mutableStateOf(false) }
+    var showTimePicker by remember { mutableStateOf(false) }
+    var selectedTimestamp by remember { mutableStateOf(System.currentTimeMillis()) }
+
+    val dateFormatter = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+    val timeFormatter = SimpleDateFormat("HH:mm", Locale.getDefault())
+
+    // Initialize date picker state with current timestamp
+    val datePickerState = rememberDatePickerState(initialSelectedDateMillis = selectedTimestamp)
+
+    // Initialize time picker state with current time
+    val calendar = Calendar.getInstance().apply { timeInMillis = selectedTimestamp }
+    val timePickerState = rememberTimePickerState(
+        initialHour = calendar.get(Calendar.HOUR_OF_DAY),
+        initialMinute = calendar.get(Calendar.MINUTE),
+        is24Hour = false
+    )
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Add Conversation") },
         text = {
-            Column {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+            ) {
                 OutlinedTextField(
                     value = content,
                     onValueChange = { content = it },
@@ -1154,7 +1184,44 @@ fun AddConversationDialog(
                     modifier = Modifier.fillMaxWidth(),
                     textStyle = MaterialTheme.typography.bodyLarge
                 )
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Date Picker Button
+                OutlinedTextField(
+                    value = dateFormatter.format(Date(selectedTimestamp)),
+                    onValueChange = {},
+                    label = { Text("Date") },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { showDatePicker = true },
+                    enabled = false,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                        disabledBorderColor = MaterialTheme.colorScheme.outline,
+                        disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Time Picker Button
+                OutlinedTextField(
+                    value = timeFormatter.format(Date(selectedTimestamp)),
+                    onValueChange = {},
+                    label = { Text("Time") },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { showTimePicker = true },
+                    enabled = false,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                        disabledBorderColor = MaterialTheme.colorScheme.outline,
+                        disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
                 Text("Select Tag:")
                 FlowRow(
                     modifier = Modifier.fillMaxWidth(),
@@ -1171,7 +1238,7 @@ fun AddConversationDialog(
                                     MaterialTheme.colorScheme.secondary
                             ),
                             modifier = Modifier.padding(vertical = 1.dp),
-                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp) // Tighter content padding
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
                         ) {
                             Text(
                                 text = tag,
@@ -1186,7 +1253,7 @@ fun AddConversationDialog(
             Button(
                 onClick = {
                     if (content.text.isNotBlank()) {
-                        onAdd(content.text, selectedTag)
+                        onAdd(content.text, selectedTag, selectedTimestamp)
                     }
                 }
             ) {
@@ -1199,23 +1266,118 @@ fun AddConversationDialog(
             }
         }
     )
+
+    // Date Picker Dialog
+    if (showDatePicker) {
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        datePickerState.selectedDateMillis?.let { selectedDate ->
+                            val calendar = Calendar.getInstance().apply {
+                                timeInMillis = selectedTimestamp
+                                set(
+                                    Calendar.YEAR,
+                                    Calendar.getInstance().apply { timeInMillis = selectedDate }.get(Calendar.YEAR)
+                                )
+                                set(
+                                    Calendar.MONTH,
+                                    Calendar.getInstance().apply { timeInMillis = selectedDate }.get(Calendar.MONTH)
+                                )
+                                set(
+                                    Calendar.DAY_OF_MONTH,
+                                    Calendar.getInstance().apply { timeInMillis = selectedDate }.get(Calendar.DAY_OF_MONTH)
+                                )
+                            }
+                            selectedTimestamp = calendar.timeInMillis
+                        }
+                        showDatePicker = false
+                    }
+                ) { Text("OK") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) { Text("Cancel") }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
+
+    // Time Picker Dialog
+    if (showTimePicker) {
+        AlertDialog(
+            onDismissRequest = { showTimePicker = false },
+            title = { Text("Select Time") },
+            text = {
+                TimePicker(state = timePickerState)
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val calendar = Calendar.getInstance().apply {
+                            timeInMillis = selectedTimestamp
+                            set(Calendar.HOUR_OF_DAY, timePickerState.hour)
+                            set(Calendar.MINUTE, timePickerState.minute)
+                        }
+                        selectedTimestamp = calendar.timeInMillis
+                        showTimePicker = false
+                    }
+                ) { Text("OK") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showTimePicker = false }) { Text("Cancel") }
+            }
+        )
+    }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditConversationDialog(
     conversation: Conversation,
+    viewModel: MainViewModel,
     onDismiss: () -> Unit,
     onUpdate: (Conversation) -> Unit,
     onDelete: () -> Unit
 ) {
     var content by remember { mutableStateOf(TextFieldValue(conversation.content)) }
     var selectedTag by remember { mutableStateOf(conversation.tag ?: "Casual") }
+    var selectedTimestamp by remember { mutableStateOf(conversation.timestamp) }
+    var showDatePicker by remember { mutableStateOf(false) }
+    var showTimePicker by remember { mutableStateOf(false) }
+    var selectedPersonId by remember { mutableStateOf(conversation.personId) }
+    var persons by remember { mutableStateOf<List<Person>>(emptyList()) }
+    var showPersonPicker by remember { mutableStateOf(false) }
+
+    // Fetch all persons for the person picker
+    LaunchedEffect(Unit) {
+        viewModel.allPersons.collectLatest { persons = it }
+    }
+
+    val dateFormatter = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+    val timeFormatter = SimpleDateFormat("HH:mm", Locale.getDefault())
+
+    // Initialize date picker state with conversation timestamp
+    val datePickerState = rememberDatePickerState(initialSelectedDateMillis = selectedTimestamp)
+
+    // Initialize time picker state with conversation time
+    val calendar = Calendar.getInstance().apply { timeInMillis = selectedTimestamp }
+    val timePickerState = rememberTimePickerState(
+        initialHour = calendar.get(Calendar.HOUR_OF_DAY),
+        initialMinute = calendar.get(Calendar.MINUTE),
+        is24Hour = false
+    )
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Edit Conversation") },
         text = {
-            Column {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+            ) {
                 OutlinedTextField(
                     value = content,
                     onValueChange = { content = it },
@@ -1223,7 +1385,62 @@ fun EditConversationDialog(
                     modifier = Modifier.fillMaxWidth(),
                     textStyle = MaterialTheme.typography.bodyLarge
                 )
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Person Picker
+                OutlinedTextField(
+                    value = persons.find { it.id == selectedPersonId }?.name ?: "Select Person",
+                    onValueChange = {},
+                    label = { Text("Person") },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { showPersonPicker = true },
+                    enabled = false,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                        disabledBorderColor = MaterialTheme.colorScheme.outline,
+                        disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Date Picker Button
+                OutlinedTextField(
+                    value = dateFormatter.format(Date(selectedTimestamp)),
+                    onValueChange = {},
+                    label = { Text("Date") },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { showDatePicker = true },
+                    enabled = false,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                        disabledBorderColor = MaterialTheme.colorScheme.outline,
+                        disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Time Picker Button
+                OutlinedTextField(
+                    value = timeFormatter.format(Date(selectedTimestamp)),
+                    onValueChange = {},
+                    label = { Text("Time") },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { showTimePicker = true },
+                    enabled = false,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                        disabledBorderColor = MaterialTheme.colorScheme.outline,
+                        disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
                 Text("Select Tag:")
                 FlowRow(
                     modifier = Modifier.fillMaxWidth(),
@@ -1240,7 +1457,7 @@ fun EditConversationDialog(
                                     MaterialTheme.colorScheme.secondary
                             ),
                             modifier = Modifier.padding(vertical = 1.dp),
-                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp) // Tighter content padding
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
                         ) {
                             Text(
                                 text = tag,
@@ -1257,8 +1474,10 @@ fun EditConversationDialog(
                     if (content.text.isNotBlank()) {
                         onUpdate(
                             conversation.copy(
+                                personId = selectedPersonId,
                                 content = content.text,
                                 tag = selectedTag,
+                                timestamp = selectedTimestamp,
                                 category = when (selectedTag) {
                                     "Emotional" -> ConversationCategory.EMOTIONAL
                                     "Practical" -> ConversationCategory.PRACTICAL
@@ -1287,7 +1506,103 @@ fun EditConversationDialog(
             }
         }
     )
+
+    // Date Picker Dialog
+    if (showDatePicker) {
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        datePickerState.selectedDateMillis?.let { selectedDate ->
+                            val calendar = Calendar.getInstance().apply {
+                                timeInMillis = selectedTimestamp
+                                set(
+                                    Calendar.YEAR,
+                                    Calendar.getInstance().apply { timeInMillis = selectedDate }.get(Calendar.YEAR)
+                                )
+                                set(
+                                    Calendar.MONTH,
+                                    Calendar.getInstance().apply { timeInMillis = selectedDate }.get(Calendar.MONTH)
+                                )
+                                set(
+                                    Calendar.DAY_OF_MONTH,
+                                    Calendar.getInstance().apply { timeInMillis = selectedDate }.get(Calendar.DAY_OF_MONTH)
+                                )
+                            }
+                            selectedTimestamp = calendar.timeInMillis
+                        }
+                        showDatePicker = false
+                    }
+                ) { Text("OK") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) { Text("Cancel") }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
+
+    // Time Picker Dialog
+    if (showTimePicker) {
+        AlertDialog(
+            onDismissRequest = { showTimePicker = false },
+            title = { Text("Select Time") },
+            text = {
+                TimePicker(state = timePickerState)
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val calendar = Calendar.getInstance().apply {
+                            timeInMillis = selectedTimestamp
+                            set(Calendar.HOUR_OF_DAY, timePickerState.hour)
+                            set(Calendar.MINUTE, timePickerState.minute)
+                        }
+                        selectedTimestamp = calendar.timeInMillis
+                        showTimePicker = false
+                    }
+                ) { Text("OK") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showTimePicker = false }) { Text("Cancel") }
+            }
+        )
+    }
+
+    // Person Picker Dialog
+    if (showPersonPicker) {
+        AlertDialog(
+            onDismissRequest = { showPersonPicker = false },
+            title = { Text("Select Person") },
+            text = {
+                LazyColumn {
+                    items(persons) { person ->
+                        Text(
+                            text = person.name,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    selectedPersonId = person.id
+                                    showPersonPicker = false
+                                }
+                                .padding(16.dp),
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showPersonPicker = false }) { Text("Done") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showPersonPicker = false }) { Text("Cancel") }
+            }
+        )
+    }
 }
+
 fun List<Person>.sortedBySortOption(sortOption: String, ascending: Boolean): List<Person> {
     return when (sortOption) {
         "Name" -> if (ascending) sortedBy { it.name } else sortedByDescending { it.name }
